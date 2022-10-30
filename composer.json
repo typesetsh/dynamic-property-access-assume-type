@@ -1,0 +1,35 @@
+{
+    "name": "typesetsh/dynamic-property-access-assume-type",
+    "description": "Allow assuming type when accessing properties dynamically using the __get() method.",
+    "type": "psalm-plugin",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Typesetsh\\Psalm\\DynamicPropertyAccessAssumeType\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Typesetsh\\Psalm\\DynamicPropertyAccessAssumeType\\Example\\": "example/"
+        }
+    },
+    "extra": {
+        "psalm": {
+            "pluginClass": "Typesetsh\\Psalm\\DynamicPropertyAccessAssumeType\\Plugin"
+        }
+    },
+    "authors": [
+        {
+            "name": "Jacob Siefer",
+            "email": "mail@jsiefer.de"
+        }
+    ],
+    "require": {
+        "php": ">=7.4",
+        "vimeo/psalm": "^4.0"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.8.0",
+        "phpunit/phpunit": "~9.5.0"
+    }
+}
