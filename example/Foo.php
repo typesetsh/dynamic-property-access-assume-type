@@ -1,5 +1,9 @@
 <?php
-
+/**
+ * Some file doc comment.
+ *
+ * @see LICENSE.md
+ */
 declare(strict_types=1);
 
 namespace Typesetsh\DynamicProperties\Example;
@@ -22,15 +26,25 @@ class B
  */
 class A
 {
-    public function __get(string $name): B
+    public function __get(string $name): ?B
     {
         throw new \RuntimeException('No such property');
     }
 }
 
-$prop1 = (string) rand(1000, 9999);
-$prop2 = (string) rand(1000, 9999);
+class C
+{
+    public int $value;
 
+    public function __construct()
+    {
+        $this->value = rand(0, 1000);
+    }
+}
+
+$prop2 = rand(1000, 9999);
+
+$c = new C();
 $a = new A();
 
-return $a->{$prop1}->{$prop2};
+return $a->{$c->value}->{$prop2};

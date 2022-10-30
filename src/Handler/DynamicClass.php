@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Typesetsh\Psalm\DynamicPropertyAccessAssumeType\Handler;
 
 use PhpParser\Node\Expr;
+use PhpParser\Node\Identifier;
 use Psalm\Internal\Scanner\DocblockParser;
+use Psalm\Internal\Type\TypeCombiner;
 use Psalm\Plugin;
 use Psalm\Plugin\EventHandler\Event;
 use Psalm\Storage;
@@ -31,7 +33,7 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
         if (!$expr instanceof Expr\PropertyFetch) {
             return null;
         }
-        if (!$expr->name instanceof Expr\Variable) {
+        if ($expr->name instanceof Identifier) {
             return null;
         }
 
@@ -40,37 +42,52 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
             return null;
         }
 
-        $assumedTypes = [];
+        $assumed_types = [];
         foreach ($nodeType->getAtomicTypes() as $type) {
-            if (!$type instanceof TNamedObject) {
-                return null;
-            }
-
-            $class_storage = $codebase->classlikes->getStorageFor($type->value);
-            if (!$class_storage) {
-                return null;
-            }
-
-            $get_method = $class_storage->methods['__get'] ?? null;
-            if (!$get_method) {
-                return null;
-            }
-
-            if (!self::assumeDynamicTypes($class_storage)) {
-                return null;
-            }
-
-            if ($get_method->return_type) {
-                $assumedTypes[] = $get_method->return_type;
+            if ($type instanceof TNamedObject) {
+                $class_storage = $codebase->classlikes->getStorageFor($type->value);
+                if ($class_storage) {
+                    foreach (self::fetchMagicGetReturnTypes($class_storage) as $return_type) {
+                        $assumed_types[] = $return_type;
+                    }
+                }
+            } else {
+                $assumed_types[] = $type;
             }
         }
 
-        if ($assumedTypes) {
-            $assumedType = Type::combineUnionTypeArray($assumedTypes, $codebase);
+        if ($assumed_types) {
+            $assumedType = TypeCombiner::combine($assumed_types, $codebase);
             $statementAnalyzer->getNodeTypeProvider()->setType($expr, $assumedType);
         }
 
         return null;
+    }
+
+    /**
+     * Retrieve return types from magic __get method if available and if DOC_TAG is set.
+     *
+     * @return list<Type\Atomic>
+     */
+    public static function fetchMagicGetReturnTypes(Storage\ClassLikeStorage $class_storage): array
+    {
+        $get_method = $class_storage->methods['__get'] ?? null;
+        if (!$get_method) {
+            return [];
+        }
+
+        if (!self::assumeDynamicTypes($class_storage)) {
+            return [];
+        }
+
+        $types = [];
+        if ($get_method->return_type) {
+            foreach ($get_method->return_type->getAtomicTypes() as $returnType) {
+                $types[] = $returnType;
+            }
+        }
+
+        return $types;
     }
 
     /**
@@ -86,9 +103,9 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
             return false;
         }
 
-        $docblock = file_get_contents($class_storage->stmt_location->file_path);
+        $snippet = $class_storage->stmt_location->getSnippet();
 
-        $doc = DocblockParser::parse($docblock, $class_storage->stmt_location->docblock_start ?? 0);
+        $doc = DocblockParser::parse($snippet, 0);
         $assume = (bool) ($doc->tags[self::DOC_TAG] ?? false);
 
         return self::$assumeType[$class_storage->name] = $assume;
