@@ -22,14 +22,11 @@ class B
 }
 
 /**
+ * @method ?B __get(string $name)
  * @dynamic-property-access-assume-type
  */
 class A
 {
-    public function __get(string $name): ?B
-    {
-        throw new \RuntimeException('No such property');
-    }
 }
 
 class C

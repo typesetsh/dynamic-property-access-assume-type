@@ -71,7 +71,9 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
      */
     public static function fetchMagicGetReturnTypes(Storage\ClassLikeStorage $class_storage): array
     {
-        $get_method = $class_storage->methods['__get'] ?? null;
+        $get_method = $class_storage->methods['__get']
+                   ?? $class_storage->pseudo_methods['__get']
+                   ?? null;
         if (!$get_method) {
             return [];
         }
