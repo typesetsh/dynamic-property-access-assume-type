@@ -49,12 +49,8 @@ class AllowArrayCasting implements Plugin\EventHandler\AfterExpressionAnalysisIn
                     return null;
                 }
 
-                foreach ($class_storage->properties as $property) {
-                    if ($property->type) {
-                        foreach ($property->type->getAtomicTypes() as $propertyType) {
-                            $candidates[] = $propertyType;
-                        }
-                    }
+                foreach (self::collectPropertyTypes($class_storage) as $property_type) {
+                    $candidates[] = $property_type;
                 }
             }
         }
@@ -71,6 +67,24 @@ class AllowArrayCasting implements Plugin\EventHandler\AfterExpressionAnalysisIn
         }
 
         return null;
+    }
+
+    /**
+     * @return list<Type\Atomic>
+     */
+    public static function collectPropertyTypes(Storage\ClassLikeStorage $class_storage): array
+    {
+        $candidates = [];
+
+        foreach ($class_storage->properties as $property) {
+            if ($property->type) {
+                foreach ($property->type->getAtomicTypes() as $propertyType) {
+                    $candidates[] = $propertyType;
+                }
+            }
+        }
+
+        return $candidates;
     }
 
     /**

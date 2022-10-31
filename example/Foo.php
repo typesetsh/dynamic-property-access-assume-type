@@ -23,6 +23,7 @@ class B
 
 /**
  * @method ?B __get(string $name)
+ *
  * @dynamic-property-access-assume-type
  */
 class A

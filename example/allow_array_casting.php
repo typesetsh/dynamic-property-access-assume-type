@@ -11,7 +11,7 @@ namespace Typesetsh\DynamicProperties\Example;
 /**
  * @allow-array-casting
  */
-class Data
+class Data extends \stdClass
 {
     public string $name = '';
     public int $age = 0;

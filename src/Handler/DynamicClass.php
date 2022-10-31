@@ -26,7 +26,7 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
     public static function afterExpressionAnalysis(Event\AfterExpressionAnalysisEvent $event): ?bool
     {
         $expr = $event->getExpr();
-        $statementAnalyzer = $event->getStatementsSource();
+        $statement_analyzer = $event->getStatementsSource();
         $codebase = $event->getCodebase();
 
         if (!$expr instanceof Expr\PropertyFetch) {
@@ -36,18 +36,25 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
             return null;
         }
 
-        $nodeType = $statementAnalyzer->getNodeTypeProvider()->getType($expr->var);
-        if (!$nodeType) {
+        $node_type = $statement_analyzer->getNodeTypeProvider()->getType($expr->var);
+        if (!$node_type) {
             return null;
         }
 
         $assumed_types = [];
-        foreach ($nodeType->getAtomicTypes() as $type) {
+        foreach ($node_type->getAtomicTypes() as $type) {
             if ($type instanceof Type\Atomic\TNamedObject) {
                 $class_storage = $codebase->classlikes->getStorageFor($type->value);
                 if ($class_storage) {
-                    foreach (self::fetchMagicGetReturnTypes($class_storage) as $return_type) {
-                        $assumed_types[] = $return_type;
+                    $magic_get_types = self::fetchMagicGetReturnTypes($class_storage);
+                    if ($magic_get_types) {
+                        foreach ($magic_get_types as $return_type) {
+                            $assumed_types[] = $return_type;
+                        }
+                    } else {
+                        foreach (AllowArrayCasting::collectPropertyTypes($class_storage) as $property_type) {
+                            $assumed_types[] = $property_type;
+                        }
                     }
                 }
             } else {
@@ -56,8 +63,8 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
         }
 
         if ($assumed_types) {
-            $assumedType = TypeCombiner::combine($assumed_types, $codebase);
-            $statementAnalyzer->getNodeTypeProvider()->setType($expr, $assumedType);
+            $union_type = TypeCombiner::combine($assumed_types, $codebase);
+            $statement_analyzer->getNodeTypeProvider()->setType($expr, $union_type);
         }
 
         return null;
@@ -73,22 +80,20 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
         $get_method = $class_storage->methods['__get']
                    ?? $class_storage->pseudo_methods['__get']
                    ?? null;
-        if (!$get_method) {
-            return [];
+
+        $candidates = [];
+
+        if (!$get_method || !self::assumeDynamicTypes($class_storage)) {
+            return $candidates;
         }
 
-        if (!self::assumeDynamicTypes($class_storage)) {
-            return [];
-        }
-
-        $types = [];
         if ($get_method->return_type) {
             foreach ($get_method->return_type->getAtomicTypes() as $returnType) {
-                $types[] = $returnType;
+                $candidates[] = $returnType;
             }
         }
 
-        return $types;
+        return $candidates;
     }
 
     /**
