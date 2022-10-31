@@ -12,7 +12,6 @@ use Psalm\Plugin;
 use Psalm\Plugin\EventHandler\Event;
 use Psalm\Storage;
 use Psalm\Type;
-use Psalm\Type\Atomic\TNamedObject;
 
 /**
  * @psalm-suppress InternalMethod
@@ -44,7 +43,7 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
 
         $assumed_types = [];
         foreach ($nodeType->getAtomicTypes() as $type) {
-            if ($type instanceof TNamedObject) {
+            if ($type instanceof Type\Atomic\TNamedObject) {
                 $class_storage = $codebase->classlikes->getStorageFor($type->value);
                 if ($class_storage) {
                     foreach (self::fetchMagicGetReturnTypes($class_storage) as $return_type) {

@@ -19,5 +19,8 @@ class Plugin implements PluginEntryPointInterface
     {
         require_once __DIR__.'/Handler/DynamicClass.php';
         $registration->registerHooksFromClass(Handler\DynamicClass::class);
+
+        require_once __DIR__.'/Handler/AllowArrayCasting.php';
+        $registration->registerHooksFromClass(Handler\AllowArrayCasting::class);
     }
 }
