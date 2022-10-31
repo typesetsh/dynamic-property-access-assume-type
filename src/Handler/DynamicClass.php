@@ -40,6 +40,13 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
         if (!$node_type) {
             return null;
         }
+        $name_type = $statement_analyzer->getNodeTypeProvider()->getType($expr->name);
+
+        /*
+         * If name type is a list of literal strings, then we can assume that
+         * not all properties are accessed, but only the literal strings.
+         */
+        $properties = $name_type ? self::fetchLiteralStrings($name_type) : [];
 
         $assumed_types = [];
         foreach ($node_type->getAtomicTypes() as $type) {
@@ -52,7 +59,7 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
                             $assumed_types[] = $return_type;
                         }
                     } else {
-                        foreach (AllowArrayCasting::collectPropertyTypes($class_storage) as $property_type) {
+                        foreach (AllowArrayCasting::collectPropertyTypes($class_storage, $properties) as $property_type) {
                             $assumed_types[] = $property_type;
                         }
                     }
@@ -94,6 +101,23 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
         }
 
         return $candidates;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function fetchLiteralStrings(Type\Union $types): array
+    {
+        $strings = [];
+        foreach ($types->getAtomicTypes() as $type) {
+            if ($type instanceof Type\Atomic\TLiteralString) {
+                $strings[] = $type->value;
+            } else {
+                return [];
+            }
+        }
+
+        return $strings;
     }
 
     /**

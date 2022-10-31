@@ -70,13 +70,17 @@ class AllowArrayCasting implements Plugin\EventHandler\AfterExpressionAnalysisIn
     }
 
     /**
+     * @param list<string> $properties
+     *
      * @return list<Type\Atomic>
      */
-    public static function collectPropertyTypes(Storage\ClassLikeStorage $class_storage): array
+    public static function collectPropertyTypes(Storage\ClassLikeStorage $class_storage, array $properties = []): array
     {
         $candidates = [];
-
-        foreach ($class_storage->properties as $property) {
+        foreach ($class_storage->properties as $name => $property) {
+            if ($properties && !in_array($name, $properties)) {
+                continue;
+            }
             if ($property->type) {
                 foreach ($property->type->getAtomicTypes() as $propertyType) {
                     $candidates[] = $propertyType;
