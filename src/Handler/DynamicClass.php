@@ -6,12 +6,12 @@ namespace Typesetsh\Psalm\DynamicPropertyAccessAssumeType\Handler;
 
 use PhpParser\Node\Expr;
 use PhpParser\Node\Identifier;
-use Psalm\Internal\Scanner\DocblockParser;
+use Psalm;
 use Psalm\Internal\Type\TypeCombiner;
 use Psalm\Plugin;
 use Psalm\Plugin\EventHandler\Event;
-use Psalm\Storage;
 use Psalm\Type;
+use Typesetsh\Psalm\DynamicPropertyAccessAssumeType\Storage;
 
 /**
  * @psalm-suppress InternalMethod
@@ -19,9 +19,6 @@ use Psalm\Type;
 class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterface
 {
     public const DOC_TAG = 'dynamic-property-access-assume-type';
-
-    /** @var array<string, bool> */
-    private static array $assumeType = [];
 
     public static function afterExpressionAnalysis(Event\AfterExpressionAnalysisEvent $event): ?bool
     {
@@ -40,6 +37,7 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
         if (!$node_type) {
             return null;
         }
+
         $name_type = $statement_analyzer->getNodeTypeProvider()->getType($expr->name);
 
         /*
@@ -82,7 +80,7 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
      *
      * @return list<Type\Atomic>
      */
-    public static function fetchMagicGetReturnTypes(Storage\ClassLikeStorage $class_storage): array
+    public static function fetchMagicGetReturnTypes(Psalm\Storage\ClassLikeStorage $class_storage): array
     {
         $get_method = $class_storage->methods['__get']
                    ?? $class_storage->pseudo_methods['__get']
@@ -90,7 +88,7 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
 
         $candidates = [];
 
-        if (!$get_method || !self::assumeDynamicTypes($class_storage)) {
+        if (!$get_method || !Storage::hasTag($class_storage, self::DOC_TAG)) {
             return $candidates;
         }
 
@@ -118,26 +116,5 @@ class DynamicClass implements Plugin\EventHandler\AfterExpressionAnalysisInterfa
         }
 
         return $strings;
-    }
-
-    /**
-     * Check class doc-block tags to see if feature is enabled.
-     */
-    public static function assumeDynamicTypes(Storage\ClassLikeStorage $class_storage): bool
-    {
-        if (isset(self::$assumeType[$class_storage->name])) {
-            return self::$assumeType[$class_storage->name];
-        }
-
-        if (!$class_storage->stmt_location) {
-            return false;
-        }
-
-        $snippet = $class_storage->stmt_location->getSnippet();
-
-        $doc = DocblockParser::parse($snippet, 0);
-        $assume = (bool) ($doc->tags[self::DOC_TAG] ?? false);
-
-        return self::$assumeType[$class_storage->name] = $assume;
     }
 }

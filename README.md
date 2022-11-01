@@ -3,6 +3,80 @@
 Allow assuming type when accessing properties dynamically using the __get() method.
 
 
+Add `@universal-object-crate` for classes with type declaration.
+```php
+<?php
+/**
+ * Some file doc comment.
+ *
+ * @see LICENSE.md
+ */
+declare(strict_types=1);
+
+namespace Typesetsh\Psalm\DynamicPropertyAccessAssumeType\Example;
+
+/**
+ * @universal-object-crate int|null
+ */
+class M extends \stdClass
+{
+}
+
+/**
+ * @property int $age
+ */
+class N extends M
+{
+    public string $name = '';
+}
+
+$m = new M();
+$m->age = 34;
+
+$n = new N();
+$n->name = 'John';
+$n->age = 34;
+
+return [$m, $n];
+
+
+```
+
+
+Add `@allow-array-casting` for casting to array of type `array<string, {union of all properties}>`.
+
+```php
+
+<?php
+/**
+ * Some file doc comment.
+ *
+ * @see LICENSE.md
+ */
+declare(strict_types=1);
+
+namespace Typesetsh\DynamicProperties\Example;
+
+/**
+ * @allow-array-casting
+ */
+class Data extends \stdClass
+{
+    public string $name = '';
+    public int $age = 0;
+}
+
+$data = new Data();
+
+foreach ((array) $data as $key => $value) {
+    echo $key, $value;
+}
+
+
+```
+
+
+
 ```php
 
 /**
@@ -37,3 +111,6 @@ $a = new A();
 
 return $a->{$prop1}->{$prop2};
 ```
+
+
+

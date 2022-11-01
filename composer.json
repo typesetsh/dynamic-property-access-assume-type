@@ -1,6 +1,6 @@
 {
     "name": "typesetsh/dynamic-property-access-assume-type",
-    "description": "Allow assuming type when accessing properties dynamically using the __get() method.",
+    "description": "Psalm plugin to support dynamic property access and object crates. Used by typeset.sh",
     "type": "psalm-plugin",
     "license": "MIT",
     "autoload": {
