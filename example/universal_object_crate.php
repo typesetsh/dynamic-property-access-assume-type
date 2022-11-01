@@ -23,6 +23,10 @@ class N extends M
     public string $name = '';
 }
 
+class O extends M
+{
+}
+
 $m = new M();
 $m->age = 34;
 

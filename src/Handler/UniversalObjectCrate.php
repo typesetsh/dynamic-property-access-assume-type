@@ -6,7 +6,7 @@ namespace Typesetsh\Psalm\DynamicPropertyAccessAssumeType\Handler;
 
 use Psalm;
 use Psalm\Plugin;
-use Psalm\Plugin\EventHandler\Event\AfterClassLikeVisitEvent;
+use Psalm\Plugin\EventHandler\Event\AfterCodebasePopulatedEvent;
 use Psalm\Plugin\EventHandler\Event\PropertyExistenceProviderEvent;
 use Typesetsh\Psalm\DynamicPropertyAccessAssumeType\Storage;
 
@@ -14,59 +14,69 @@ use Typesetsh\Psalm\DynamicPropertyAccessAssumeType\Storage;
  * @psalm-suppress InternalMethod
  * @psalm-suppress InternalProperty
  */
-class UniversalObjectCrate implements Plugin\EventHandler\AfterClassLikeVisitInterface
+class UniversalObjectCrate implements Plugin\EventHandler\AfterCodebasePopulatedInterface
 {
     public const DOC_TAG = 'universal-object-crate';
 
-    public static function afterClassLikeVisit(AfterClassLikeVisitEvent $event): void
+    public static function afterCodebasePopulated(AfterCodebasePopulatedEvent $event)
     {
-        $storage = $event->getStorage();
         $codebase = $event->getCodebase();
+        $classes = $codebase->classlike_storage_provider->getAll();
 
-        $property_exist = function (PropertyExistenceProviderEvent $event) use ($storage, $codebase): ?bool {
-            $name = $event->getPropertyName();
-            $var_name = '$'.$name;
-            if (isset($storage->properties[$name])) {
-                return null;
+        foreach ($classes as $class_storage) {
+            $object_crate_type = self::getCrateType($codebase, $class_storage);
+            if (!$object_crate_type) {
+                continue;
             }
 
-            $pseudo_get = $storage->pseudo_property_get_types[$var_name] ?? null;
-            $pseudo_set = $storage->pseudo_property_set_types[$var_name] ?? null;
+            $property_exist = function (PropertyExistenceProviderEvent $event) use ($class_storage, $object_crate_type): ?bool {
+                $name = $event->getPropertyName();
+                $var_name = '$'.$name;
+                if (isset($class_storage->properties[$name])) {
+                    return null;
+                }
 
-            if ($pseudo_get && $pseudo_set) {
-                $property = $storage->properties[$name] = new Psalm\Storage\PropertyStorage();
-                $property->type = $pseudo_set;
+                $pseudo_get = $class_storage->pseudo_property_get_types[$var_name] ?? null;
+                $pseudo_set = $class_storage->pseudo_property_set_types[$var_name] ?? null;
 
-                $storage->declaring_property_ids[$name] = $storage->name;
-                $storage->appearing_property_ids[$name] = $storage->name.'::'.$var_name;
+                if ($pseudo_get && $pseudo_set) {
+                    $property = $class_storage->properties[$name] = new Psalm\Storage\PropertyStorage();
+                    $property->type = $pseudo_set;
+
+                    $class_storage->declaring_property_ids[$name] = $class_storage->name;
+                    $class_storage->appearing_property_ids[$name] = $class_storage->name.'::'.$var_name;
+                } else {
+                    $property = $class_storage->properties[$name] = new Psalm\Storage\PropertyStorage();
+                    $property->type = $object_crate_type;
+
+                    $class_storage->declaring_property_ids[$name] = $class_storage->name;
+                    $class_storage->appearing_property_ids[$name] = $class_storage->name.'::'.$var_name;
+                }
 
                 return true;
+            };
+
+            $codebase->properties->property_existence_provider->registerClosure($class_storage->name, $property_exist);
+        }
+    }
+
+    private static function getCrateType(
+        Psalm\Codebase $codebase,
+        Psalm\Storage\ClassLikeStorage $class_storage
+    ): ?Psalm\Type\Union {
+        $type = Storage::getTagType($class_storage, self::DOC_TAG);
+        if ($type) {
+            return $type;
+        }
+
+        foreach ($class_storage->parent_classes as $parent_class) {
+            $parent_storage = $codebase->classlike_storage_provider->get($parent_class);
+            $type = Storage::getTagType($parent_storage, self::DOC_TAG);
+            if ($type) {
+                return $type;
             }
+        }
 
-            $object_crate_type = Storage::getTagType($storage, self::DOC_TAG);
-            if (!$object_crate_type) {
-                foreach ($storage->parent_classes as $parent_class) {
-                    $parent_storage = $codebase->classlikes->getStorageFor($parent_class);
-                    if ($parent_storage) {
-                        $object_crate_type = Storage::getTagType($parent_storage, self::DOC_TAG);
-                        if ($object_crate_type) {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if ($object_crate_type) {
-                $property = $storage->properties[$name] = new Psalm\Storage\PropertyStorage();
-                $property->type = $object_crate_type;
-
-                $storage->declaring_property_ids[$name] = $storage->name;
-                $storage->appearing_property_ids[$name] = $storage->name.'::'.$var_name;
-            }
-
-            return null;
-        };
-
-        $codebase->properties->property_existence_provider->registerClosure($storage->name, $property_exist);
+        return null;
     }
 }
