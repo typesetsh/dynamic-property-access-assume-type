@@ -23,7 +23,7 @@ class UniversalObjectCrate implements Plugin\EventHandler\AfterClassLikeVisitInt
         $storage = $event->getStorage();
         $codebase = $event->getCodebase();
 
-        $property_exist = function (PropertyExistenceProviderEvent $event) use ($storage): ?bool {
+        $property_exist = function (PropertyExistenceProviderEvent $event) use ($storage, $codebase): ?bool {
             $name = $event->getPropertyName();
             $var_name = '$'.$name;
             if (isset($storage->properties[$name])) {
@@ -44,6 +44,18 @@ class UniversalObjectCrate implements Plugin\EventHandler\AfterClassLikeVisitInt
             }
 
             $object_crate_type = Storage::getTagType($storage, self::DOC_TAG);
+            if (!$object_crate_type) {
+                foreach ($storage->parent_classes as $parent_class) {
+                    $parent_storage = $codebase->classlikes->getStorageFor($parent_class);
+                    if ($parent_storage) {
+                        $object_crate_type = Storage::getTagType($parent_storage, self::DOC_TAG);
+                        if ($object_crate_type) {
+                            break;
+                        }
+                    }
+                }
+            }
+
             if ($object_crate_type) {
                 $property = $storage->properties[$name] = new Psalm\Storage\PropertyStorage();
                 $property->type = $object_crate_type;
