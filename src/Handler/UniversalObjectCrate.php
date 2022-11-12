@@ -64,17 +64,21 @@ class UniversalObjectCrate implements Plugin\EventHandler\AfterCodebasePopulated
         Psalm\Codebase $codebase,
         Psalm\Storage\ClassLikeStorage $class_storage
     ): ?Psalm\Type\Union {
-        $type = Storage::getTagType($class_storage, self::DOC_TAG);
-        if ($type) {
-            return $type;
-        }
-
-        foreach ($class_storage->parent_classes as $parent_class) {
-            $parent_storage = $codebase->classlike_storage_provider->get($parent_class);
-            $type = Storage::getTagType($parent_storage, self::DOC_TAG);
+        try {
+            $type = Storage::getTagType($class_storage, self::DOC_TAG);
             if ($type) {
                 return $type;
             }
+
+            foreach ($class_storage->parent_classes as $parent_class) {
+                $parent_storage = $codebase->classlike_storage_provider->get($parent_class);
+                $type = Storage::getTagType($parent_storage, self::DOC_TAG);
+                if ($type) {
+                    return $type;
+                }
+            }
+        } catch (\Exception $_) {
+            return null;
         }
 
         return null;
