@@ -11,6 +11,9 @@ use Psalm\Internal\Scanner\DocblockParser;
 use Psalm\Internal\Type\TypeParser;
 use Psalm\Internal\Type\TypeTokenizer;
 
+/**
+ * @psalm-suppress InternalMethod
+ */
 class Storage
 {
     /** @var array<string, array<string, array<int, string>>> */
@@ -49,8 +52,11 @@ class Storage
     /**
      * Get type for given tag.
      */
-    public static function getTagType(Psalm\Storage\ClassLikeStorage $class_storage, string $tag): ?Psalm\Type\Union
-    {
+    public static function getTagType(
+        Psalm\Codebase $codebase,
+        Psalm\Storage\ClassLikeStorage $class_storage,
+        string $tag
+    ): ?Psalm\Type\Union {
         $type_string = Storage::getTag($class_storage, $tag);
         if (!$type_string) {
             return null;
@@ -60,12 +66,18 @@ class Storage
             return null;
         }
 
+        if ($class_storage->location) {
+            $file_storage = $codebase->file_storage_provider->get($class_storage->location->file_path);
+        } else {
+            $file_storage = new Psalm\Storage\FileStorage('');
+        }
+
         try {
             $type_tokens = TypeTokenizer::getFullyQualifiedTokens(
                 $type_string,
                 $class_storage->aliases,
                 null,
-                null,
+                $file_storage->type_aliases,
                 $class_storage->name
             );
         } catch (TypeParseTreeException $e) {

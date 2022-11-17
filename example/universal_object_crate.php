@@ -9,7 +9,10 @@ declare(strict_types=1);
 namespace Typesetsh\Psalm\DynamicPropertyAccessAssumeType\Example;
 
 /**
- * @universal-object-crate bool|int|null
+ * @psalm-type test = bool|int|null
+ * @psalm-type test2 = test|string
+ *
+ * @universal-object-crate test2
  */
 class M extends \stdClass
 {
