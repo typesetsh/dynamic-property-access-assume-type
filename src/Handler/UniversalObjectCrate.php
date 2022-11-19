@@ -35,6 +35,9 @@ class UniversalObjectCrate implements Plugin\EventHandler\AfterCodebasePopulated
                 if (isset($class_storage->properties[$name])) {
                     return null;
                 }
+                if (isset($class_storage->inheritable_property_ids[$name])) {
+                    return null;
+                }
 
                 $pseudo_get = $class_storage->pseudo_property_get_types[$var_name] ?? null;
                 $pseudo_set = $class_storage->pseudo_property_set_types[$var_name] ?? null;

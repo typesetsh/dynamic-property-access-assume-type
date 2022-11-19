@@ -28,14 +28,19 @@ class N extends M
 
 class O extends M
 {
+    public ?N $n = null;
+}
+class Q extends O
+{
 }
 
-$m = new M();
+$m = new O();
 $m->age = 34;
 
-$n = new N();
+$n = new Q();
 $n->name = 'John';
 $n->age = 34;
 $n->good = true;
+$n->n = new N();
 
 return [$m, $n];
